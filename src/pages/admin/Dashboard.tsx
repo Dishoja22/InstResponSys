@@ -49,12 +49,11 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     const { data, error } = await supabase
       .from('complaints')
-      .select('*, submitted_by:users(full_name, email), assigned_officer:users!complaints_assigned_officer_fkey(full_name), assigned_department:departments(name)')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('SUPABASE ERROR:', error.message, error.details);
-      return;
     }
 
     if (data) {

@@ -86,22 +86,19 @@ export default function Complaints() {
 
   const fetchComplaints = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      // Security fix: Read role from database instead of metadata
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-      
-      const uRole = userData?.role || 'student';
-      let query = supabase.from('complaints').select('*').order('created_at', { ascending: false });
-      if (uRole !== 'admin') {
-        query = query.eq('submitted_by', user.id);
-      }
-      const { data } = await query;
-      if (data) setComplaints(data);
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('complaints')
+      .select('*')
+      .eq('submitted_by', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error:', error);
+      return;
     }
+    if (data) setComplaints(data);
   };
 
   useEffect(() => {

@@ -30,11 +30,11 @@ export default function AdminComplaints() {
     setLoading(true);
     const { data, error } = await supabase
       .from('complaints')
-      .select('*, submitted_by:users(full_name, email), assigned_officer:users!complaints_assigned_officer_fkey(full_name), assigned_department:departments(name)') 
+      .select('*')
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching complaints:', error);
+      console.error('Error:', error);
     } else {
       setComplaints(data || []);
     }

@@ -17,9 +17,10 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
   const [response, setResponse] = useState('');
   const [status, setStatus] = useState('Pending');
   const [priority, setPriority] = useState('MEDIUM');
-  const [department, setDepartment] = useState('');
-  const [assignedTo, setAssignedTo] = useState<string | null>(null);
-  const [facultyList, setFacultyList] = useState<any[]>([]);
+
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editCategory, setEditCategory] = useState('');
 
   // Sync internal state when complaint changes
   useEffect(() => {
@@ -27,24 +28,12 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
       setResponse(complaint.admin_response || '');
       setStatus(complaint.status || 'Pending');
       setPriority(complaint.priority || 'MEDIUM');
-      setDepartment(complaint.assigned_department || '');
-      setAssignedTo(complaint.assigned_to || null);
+
+      setEditTitle(complaint.title || '');
+      setEditDesc(complaint.description || '');
+      setEditCategory(complaint.category || '');
     }
   }, [complaint, isOpen]);
-
-  // Fetch faculty list for assignment
-  useEffect(() => {
-    if (isOpen && isAdmin) {
-      const fetchFaculty = async () => {
-        const { data } = await supabase
-          .from('users')
-          .select('id, full_name, email')
-          .eq('role', 'faculty');
-        if (data) setFacultyList(data);
-      };
-      fetchFaculty();
-    }
-  }, [isOpen, isAdmin]);
 
   // Prevent body scroll when open
   useEffect(() => {
@@ -56,46 +45,49 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
   const handleUpdate = async () => {
     if (!complaint?.id) return;
     setLoading(true);
-    const { error } = await supabase
+    
+    const { error: updateError } = await supabase
       .from('complaints')
       .update({ 
+        title: editTitle,
+        description: editDesc,
+        category: editCategory,
         status, 
         priority,
-        assigned_department: department,
-        assigned_officer: assignedTo,
         admin_response: response,
-        resolved_at: status === 'Resolved' ? new Date().toISOString() : null 
+        resolved_at: status === 'Resolved' || status === 'Closed' ? new Date().toISOString() : null 
       })
       .eq('id', complaint.id);
 
-    if (error) {
-       console.error('Update failed:', error);
+    if (updateError) {
+       console.error('Update failed:', updateError);
+       alert('Update failed: ' + updateError.message);
     } else {
-       // Create notification for student
-       await supabase.from('notifications').insert({
+       // 1. Create notification for student
+       const { error: notifyError } = await supabase.from('notifications').insert({
          user_id: complaint.submitted_by,
          complaint_id: complaint.id,
          title: 'Complaint Updated',
-         message: `Your complaint ${complaint.complaint_code} is now ${status}.` + 
-                  (assignedTo ? ' It has been assigned to a specialist.' : ''),
-         type: status === 'Resolved' ? 'resolved' : 'update'
+         message: `Your complaint ${complaint.complaint_code} is now ${status}.`,
+         type: status === 'Resolved' || status === 'Closed' ? 'resolved' : 'status_update',
+         is_read: false
        });
 
-       if (onUpdate) onUpdate();
-       
-       // Log activity
+       if (notifyError) console.error('Notification failed:', notifyError);
+
+       // 2. Log activity
        const { data: { user: authUser } } = await supabase.auth.getUser();
        if (authUser) {
-         await supabase.from('activity_log').insert({
+         const { error: logError } = await supabase.from('activity_log').insert({
            complaint_id: complaint.id,
-           action_by: authUser.id,
-           action_type: 'update',
-           details: `Status: ${status}, Priority: ${priority}` + 
-                    (assignedTo ? `, Assigned to: ${assignedTo}` : '') + 
-                    (response ? `, Note: ${response.substring(0, 50)}...` : '')
+           actor_id: authUser.id,
+           action: `Status: ${status}, Priority: ${priority}` + 
+                    (response ? `, Response added` : '')
          });
+         if (logError) console.error('Activity log failed:', logError);
        }
 
+       if (onUpdate) onUpdate();
        onClose();
     }
     setLoading(false);
@@ -103,7 +95,7 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
 
   if (!complaint && isOpen) return null;
 
-  const depts = ['IT & Technical', 'Maintenance', 'Academic Affairs', 'Hostel & Mess', 'Library', 'Transport', 'Administration'];
+
 
   return (
     <AnimatePresence>
@@ -140,7 +132,16 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
                 </button>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-primary leading-snug mb-3">{complaint.title}</h2>
+                {isAdmin ? (
+                  <input 
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="text-xl font-bold text-primary leading-snug mb-3 bg-surface border border-border rounded px-3 py-1.5 w-full focus:border-accent outline-none"
+                    placeholder="Complaint Title"
+                  />
+                ) : (
+                  <h2 className="text-xl font-bold text-primary leading-snug mb-3">{complaint.title}</h2>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge status={status as any} />
                   <PriorityBadge priority={priority as any} />
@@ -157,28 +158,46 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
                  <div className="grid grid-cols-2 gap-3">
                    <div className="bg-glass rounded-lg border border-glass-border p-3">
                       <span className="text-[10px] text-muted uppercase">Category</span>
-                      <div className="text-sm font-semibold">{complaint.category}</div>
+                      {isAdmin ? (
+                        <select 
+                          value={editCategory}
+                          onChange={(e) => setEditCategory(e.target.value)}
+                          className="bg-surface border border-border rounded px-2 py-1 text-sm font-semibold w-full mt-1 outline-none focus:border-accent"
+                        >
+                          <option>Hostel</option>
+                          <option>Academic</option>
+                          <option>IT</option>
+                          <option>Library</option>
+                          <option>Transport</option>
+                          <option>Administration</option>
+                        </select>
+                      ) : (
+                        <div className="text-sm font-semibold">{complaint.category}</div>
+                      )}
                    </div>
                    <div className="bg-glass rounded-lg border border-glass-border p-3">
-                      <span className="text-[10px] text-muted uppercase">Department</span>
+                      <span className="text-[10px] text-muted uppercase">Location / Dept</span>
                       <div className="text-sm font-semibold">{complaint.assigned_department || 'Unassigned'}</div>
                    </div>
                    <div className="bg-glass rounded-lg border border-glass-border p-3 col-span-2">
                       <span className="text-[10px] text-muted uppercase flex items-center gap-1"><Calendar size={12}/> Submitted On</span>
                       <div className="text-sm font-semibold">{new Date(complaint.created_at).toLocaleString()}</div>
                    </div>
-                   {complaint.assigned_officer_profile && (
-                     <div className="bg-accent/10 rounded-lg border border-accent/20 p-3 col-span-2">
-                        <span className="text-[10px] text-accent uppercase font-bold">Assigned Specialist</span>
-                        <div className="text-sm font-bold text-primary">{complaint.assigned_officer_profile.full_name}</div>
-                     </div>
-                   )}
                  </div>
                  
                  <div className="bg-elevated rounded-lg border border-border p-4 mt-1">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {complaint.description || complaint.title}
-                    </p>
+                    {isAdmin ? (
+                      <textarea 
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        className="text-sm leading-relaxed bg-surface border border-border rounded p-3 w-full min-h-[120px] outline-none focus:border-accent resize-y"
+                        placeholder="Complaint Description..."
+                      />
+                    ) : (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {complaint.description || complaint.title}
+                      </p>
+                    )}
                  </div>
               </div>
 
@@ -192,11 +211,6 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
                      <div>AI Suggested: <span className="font-semibold text-primary">{complaint.ai_priority || 'N/A'}</span></div>
                      <div>Tone: <span className="font-semibold text-primary">{complaint.ai_sentiment || 'Neutral'}</span></div>
                    </div>
-                   {complaint.ai_tips && (
-                     <div className="text-xs text-muted mt-1 italic">
-                        Tips: {complaint.ai_tips.join(', ')}
-                     </div>
-                   )}
                 </div>
               )}
 
@@ -220,7 +234,7 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
                  <div className="flex flex-col gap-3">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-muted uppercase px-1">Status</label>
+                        <label className="text-[10px] font-bold text-muted uppercase px-1">Update Status</label>
                         <select 
                           value={status}
                           onChange={(e) => setStatus(e.target.value)}
@@ -230,10 +244,11 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
                           <option>In Progress</option>
                           <option>Resolved</option>
                           <option>Closed</option>
+                          <option>Rejected</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-muted uppercase px-1">Priority</label>
+                        <label className="text-[10px] font-bold text-muted uppercase px-1">Set Priority</label>
                         <select 
                           value={priority}
                           onChange={(e) => setPriority(e.target.value)}
@@ -247,38 +262,13 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-muted uppercase px-1">Dept</label>
-                        <select 
-                          value={department}
-                          onChange={(e) => setDepartment(e.target.value)}
-                          className="bg-surface border border-border rounded-lg px-3 py-2 outline-none text-sm text-primary focus:border-accent"
-                        >
-                          <option value="">Unassigned</option>
-                          {depts.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-muted uppercase px-1">Assign Faculty</label>
-                        <select 
-                          value={assignedTo || ''}
-                          onChange={(e) => setAssignedTo(e.target.value || null)}
-                          className="bg-surface border border-border rounded-lg px-3 py-2 outline-none text-sm text-primary focus:border-accent"
-                        >
-                          <option value="">Unassigned</option>
-                          {facultyList.map(f => <option key={f.id} value={f.id}>{f.full_name}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-muted uppercase px-1">Official Response</label>
+                      <label className="text-[10px] font-bold text-muted uppercase px-1">Issue Progress Update / Resolution Note</label>
                       <textarea 
-                        placeholder="Resolution details..." 
+                        placeholder="Describe the steps being taken or provide the final resolution..." 
                         value={response}
                         onChange={(e) => setResponse(e.target.value)}
-                        className="bg-surface border border-border rounded-lg p-3 text-sm text-primary outline-none focus:border-accent resize-none h-20"
+                        className="bg-surface border border-border rounded-lg p-3 text-sm text-primary outline-none focus:border-accent resize-none h-24"
                       />
                     </div>
                     
@@ -287,7 +277,7 @@ export function ComplaintDrawer({ isOpen, onClose, isAdmin, complaint, onUpdate 
                       disabled={loading}
                       className="w-full bg-gradient-to-r from-accent to-accent-violet text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-accent/40 transition-all disabled:opacity-50"
                     >
-                      {loading ? 'Saving...' : 'Update Complaint & Notify'}
+                      {loading ? 'Saving...' : 'Save Full Changes & Notify Student'}
                     </button>
                  </div>
               </div>
