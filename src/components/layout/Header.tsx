@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Moon, Sun, Menu, CheckCircle2, MessageSquare, User, Settings, LogOut, PlusCircle } from 'lucide-react';
+// Removed Moon, Sun, CheckCircle2, and MessageSquare from this line:
+import { Bell, Menu, User, Settings, LogOut, PlusCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToastStore } from '../../store/useToastStore';
@@ -19,7 +20,6 @@ export default function Header() {
   const [userName, setUserName] = useState('User');
 
   useEffect(() => {
-
     const handleClickOutside = (event: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setShowNotif(false);
@@ -29,15 +29,14 @@ export default function Header() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserEmail(user.email || '');
         const fullName = user.user_metadata?.full_name || 'User';
         setUserName(fullName);
-        setUserInitials(fullName.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase());
-        
-        // Fetch real notifications
+        setUserInitials(fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase());
+
         supabase.from('notifications')
           .select('*')
           .eq('user_id', user.id)
@@ -51,7 +50,6 @@ export default function Header() {
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
 
   const handleDemofeature = (feature: string) => {
     setShowProfile(false);
@@ -73,17 +71,12 @@ export default function Header() {
   };
 
   const handleNotificationClick = async (id: number) => {
-    // Mark as read in UI
     setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
     setShowNotif(false);
-    
-    // Mark as read in DB
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-    
     navigate('/complaints');
   };
 
-  // Convert pathname to Breadcrumb, e.g. /admin/dashboard -> Admin / Dashboard
   const breadcrumb = location.pathname
     .split('/')
     .filter(Boolean)
@@ -92,10 +85,9 @@ export default function Header() {
 
   return (
     <header className="h-[56px] flex items-center justify-between px-6 sticky top-0 z-[100] border-b border-glass-border"
-            style={{ background: 'rgba(6, 6, 15, 0.85)', backdropFilter: 'blur(20px)' }}>
-      
+      style={{ background: 'rgba(6, 6, 15, 0.85)', backdropFilter: 'blur(20px)' }}>
+
       <div className="flex items-center gap-4">
-        {/* Mobile Menu Button placeholder */}
         <button className="md:hidden text-muted hover:text-primary">
           <Menu size={20} />
         </button>
@@ -108,9 +100,9 @@ export default function Header() {
         <button onClick={() => navigate('/submit')} className="hidden md:flex bg-gradient-to-r from-accent to-accent-violet text-white font-semibold py-1.5 px-4 rounded-lg items-center justify-center gap-2 shadow-[0_0_10px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 transition-transform text-sm mr-2">
           <PlusCircle size={14} /> New Complaint
         </button>
-        
+
         <div className="relative" ref={notifRef}>
-          <button 
+          <button
             onClick={() => setShowNotif(!showNotif)}
             className="relative text-muted hover:text-primary transition-colors p-2 rounded-full hover:bg-glass"
           >
@@ -133,23 +125,21 @@ export default function Header() {
                   <span className="text-sm font-bold text-primary">Notifications</span>
                   <button onClick={markAllRead} className="text-[11px] font-semibold text-accent hover:underline">Mark all read</button>
                 </div>
-                
+
                 <div className="flex flex-col max-h-[300px] overflow-y-auto custom-scrollbar">
-                  {notifications.map((n) => {
-                    return (
-                      <div key={n.id} onClick={() => handleNotificationClick(n.id)} className={`flex items-start gap-3 p-3 transition-colors hover:bg-glass cursor-pointer ${!n.is_read ? 'bg-glass/80 border-l-2 border-l-accent' : ''}`}>
-                         <Bell size={16} className={`text-accent mt-0.5 shrink-0`} />
-                         <div className="flex flex-col flex-1 gap-0.5">
-                            <span className="text-xs font-bold text-primary truncate max-w-[220px]">{n.title}</span>
-                            <span className="text-xs text-muted leading-snug line-clamp-2">{n.message}</span>
-                            <span className="text-[10px] text-muted mt-1 font-medium">{new Date(n.created_at).toLocaleDateString()}</span>
-                         </div>
-                         {!n.is_read && <div className="w-2 h-2 rounded-full bg-accent mt-1" />}
+                  {notifications.map((n) => (
+                    <div key={n.id} onClick={() => handleNotificationClick(n.id)} className={`flex items-start gap-3 p-3 transition-colors hover:bg-glass cursor-pointer ${!n.is_read ? 'bg-glass/80 border-l-2 border-l-accent' : ''}`}>
+                      <Bell size={16} className="text-accent mt-0.5 shrink-0" />
+                      <div className="flex flex-col flex-1 gap-0.5">
+                        <span className="text-xs font-bold text-primary truncate max-w-[220px]">{n.title}</span>
+                        <span className="text-xs text-muted leading-snug line-clamp-2">{n.message}</span>
+                        <span className="text-[10px] text-muted mt-1 font-medium">{new Date(n.created_at).toLocaleDateString()}</span>
                       </div>
-                    );
-                  })}
+                      {!n.is_read && <div className="w-2 h-2 rounded-full bg-accent mt-1" />}
+                    </div>
+                  ))}
                 </div>
-                
+
                 <div className="p-2 border-t border-glass-border mt-1">
                   <button onClick={() => { setShowNotif(false); handleDemofeature('All Notifications'); }} className="w-full text-center text-xs font-semibold text-muted hover:text-primary p-1 transition-colors">
                     View all notifications
@@ -159,15 +149,15 @@ export default function Header() {
             )}
           </AnimatePresence>
         </div>
-        
+
         <div className="relative" ref={profileRef}>
-          <div 
+          <div
             onClick={() => setShowProfile(!showProfile)}
             className="w-8 h-8 rounded-full bg-gradient-to-r from-accent to-accent-violet border border-accent/30 flex items-center justify-center text-xs font-semibold text-white shadow-lg cursor-pointer hover:shadow-accent/40 transition-shadow"
           >
             {userInitials}
           </div>
-          
+
           <AnimatePresence>
             {showProfile && (
               <motion.div
@@ -181,7 +171,7 @@ export default function Header() {
                   <span className="text-sm font-bold text-primary">{userName}</span>
                   <span className="text-xs text-muted">{userEmail}</span>
                 </div>
-                
+
                 <div className="py-1 flex flex-col">
                   <button onClick={() => handleDemofeature('Profile')} className="text-left px-4 py-2 text-sm text-primary hover:bg-glass hover:text-accent transition-colors flex items-center gap-2">
                     <User size={14} /> My Profile
@@ -190,7 +180,7 @@ export default function Header() {
                     <Settings size={14} /> Settings
                   </button>
                 </div>
-                
+
                 <div className="p-1 border-t border-glass-border mt-1">
                   <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm font-semibold text-accent-red hover:bg-accent-red/10 rounded transition-colors flex items-center gap-2">
                     <LogOut size={14} /> Sign Out
