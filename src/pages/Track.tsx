@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ClipboardPaste, ArrowRight, XCircle } from 'lucide-react';
+import { ClipboardPaste, ArrowRight, XCircle } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 

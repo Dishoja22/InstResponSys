@@ -1,5 +1,4 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-// Removed Moon, Sun, CheckCircle2, and MessageSquare from this line:
 import { Bell, Menu, User, Settings, LogOut, PlusCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

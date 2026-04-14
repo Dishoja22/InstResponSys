@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
-import { Bell, CheckCircle2, MessageSquare, Inbox, AlertCircle, RefreshCcw, Shield } from 'lucide-react';
+import { Bell, CheckCircle2, MessageSquare, Inbox, RefreshCcw, Shield } from 'lucide-react';
 import { supabase, subscribeToNotifications } from '../lib/supabase';
 
 export default function Notifications() {

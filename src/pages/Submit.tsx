@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Brain, Copy, CheckCircle, ArrowRight, Home, BookOpen, Monitor, Library as LibraryIcon, Bus, Settings } from 'lucide-react';
 import { useAIStore } from '../store/useAIStore';

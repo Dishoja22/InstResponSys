@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, Search, Inbox, Filter, Bell, Home, BookOpen, Monitor, Library as LibraryIcon, Bus, Settings } from 'lucide-react';
+import { Inbox, Bell, Home, BookOpen, Monitor, Library as LibraryIcon, Bus, Settings } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { PriorityBadge } from '../components/ui/Badge';
 import { ComplaintDrawer } from '../components/ui/Drawer';
 import { cn } from '../lib/utils';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -82,7 +81,6 @@ export default function Complaints() {
   const [filter, setFilter] = useState('All');
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [complaints, setComplaints] = useState<any[]>([]);
-  const navigate = useNavigate();
 
   const fetchComplaints = async () => {
     const { data: { user } } = await supabase.auth.getUser();
